@@ -1,0 +1,30 @@
+# Mappeoppgave 4
+
+library(rvest)
+library(tidyverse)
+library(rlist)
+
+
+URL_1 <-"https://timeplan.uit.no/emne_timeplan.php?sem=22v&module%5B%5D=SOK-1005-1&week=1-20&View=list"
+URL_2 <-"https://timeplan.uit.no/emne_timeplan.php?sem=22v&module%5B%5D=SOK-1006-1&week=1-20&View=list"
+URL_3 <-"https://timeplan.uit.no/emne_timeplan.php?sem=22v&module%5B%5D=SOK-1016-1&week=1-20&View=list"
+
+URL_liste <- list(URL_1,URL_2,URL_3)
+
+Funksjon <- function(url) {
+  return(read_html(url) %>%
+           html_nodes(.,'table') %>% 
+           html_table(.,fill = TRUE) %>% 
+           list.stack(.) %>% 
+           janitor::row_to_names(., 1) %>% 
+           separate(Dato, 
+                    into = c("Dag", "Dato", "Uke"),
+                    sep  = "(?<=[A-Za-z])(?=[0-9])") %>% 
+           mutate(Dato = as.Date(Dato, format = "%Y.%d.%m"), 
+                  Uke = strftime(Dato, format = "%V")) %>%
+           select(Dag, Dato, Uke, Tid, Rom, Lærer))  
+}
+
+timeplan <- map(URL_liste, Funksjon)
+timeplan <- bind_rows(timeplan)
+timeplan
