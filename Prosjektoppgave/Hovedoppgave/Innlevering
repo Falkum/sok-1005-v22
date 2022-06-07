@@ -110,6 +110,7 @@ weeksales%>%
   geom_line()
 weeksales
 
+##### Her får vi opp et eksempel plott på hvordan profitten i et ukes resultat ser ut.
 
 #### OPPGAVE 3 
 
