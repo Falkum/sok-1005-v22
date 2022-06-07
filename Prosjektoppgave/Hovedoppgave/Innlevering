@@ -77,12 +77,12 @@ sales_conditions<- sales_conditions %>%
 
 sales_conditions<- sales_conditions %>% inner_join(county_dem, by = c("Store_County"="County_Name"))
 sales_conditions<- sales_conditions %>% inner_join(wichattrb, by = c("Store_num"="Store_Num"))
-sales_conditions<- sales_conditions %>% inner_join(county_employ, by = c("Store_County"="?..County_Name"))
+sales_conditions<- sales_conditions %>% inner_join(county_employ, by = c("Store_County"="County_Name"))
 
 ##### Cleaner nullverdiene i kriminalitetsdatasettet; 
 
 county_crime[is.na(county_crime)]="NA"
-sales_conditions<- sales_conditions %>% inner_join(county_crime, by = c("Store_County.x"="?..County_Name"))
+sales_conditions<- sales_conditions %>% inner_join(county_crime, by = c("Store_County.x"="County_Name"))
 
 sales_conditions2<- sales_conditions %>% group_by(Store_num)
 
