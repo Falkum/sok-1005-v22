@@ -1,0 +1,139 @@
+---
+title: "Untitled"
+author: 'Kandidatnummer: 8, 37, 44'
+date: "6/7/2022"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+
+setwd("~/Documents/Prosjektoppgave")
+
+######Bruker setwd til å hente ut CSV filene lokalt på maskinen.
+
+getwd()
+
+###### Laster ned nødvendige pakker for å løse semesteroppgaven. 
+
+library(tidyverse)
+library(haven)
+library(corrplot)
+library(ggplot2)
+library(dplyr)
+library(PerformanceAnalytics)
+library(jtools)
+library(lmtest)
+library(huxtable)
+library(readr)
+library(stringr)
+library(lubridate)
+library(data.table)
+
+
+#####Importerer de 6 datasettene og kobler dem til objekter.
+
+#####Datasettene nedenfor er hentet fra https://data.mendeley.com/datasets/6htjnfs78b/2
+
+week_weather<- read.csv('WEEKLY_WEATHER.csv')
+weeksales<- read.csv('WEEKLY_SALES_10STORES.csv')
+wichattrb<- read.csv('AppWichStoreAttributes.csv')
+county_dem<- read.csv('county_demographic.csv')
+county_employ<- read.csv('county_employment.csv')
+county_crime<-read.csv('county_crime.csv')
+
+
+#### Oppgave 1 
+##### Værdatasettet har nullverdier. Disse erstattes med null under.
+
+week_weather[is.na(week_weather)]=0
+
+
+##### Cleaner datoene i datasettet. dette gjør slik at vi kan droppe de separate datomåned- og år-kolonnene i det ukentlige salgsdatasettet
+##### Datoene i værdatasettet ble ikke lagret i ISO-format, derav de forskjellige argumentene i mutasjonsfunksjonene
+##### R fungerer bare med ISO-datoformater. 
+
+weeksales = weeksales %>% mutate(Date = mdy(Date))
+
+week_weather = week_weather %>%mutate(Weather_Date =lubridate::dmy(Weather_Date))
+
+
+
+##### Tar for oss sammenslåingsoperasjonen. (merge operation).
+##### Velger alle de unike verdiene i det ukentlige salgsdatasettet
+##### En ny kolonne "sales_month" er lagt til i samlede månedlige salgsrapporter
+
+sales_conditions <- weeksales %>% select(INV_NUMBER:Date ,-Description) %>%
+  mutate(sales_month=floor_date(Date,"month")) %>%
+  select(Date,INV_NUMBER, everything())
+
+
+##### Slår sammen weekly sales med store attributes 
+
+sales_conditions<- sales_conditions %>% inner_join(wichattrb, by = c("Store_num"="Store_Num"))
+
+##### Slår sammen weekly sales og weather station
+sales_conditions<- sales_conditions %>% 
+  inner_join(week_weather, by = c("Date"="Weather_Date","Store_Weather_Station"="Weather_Station"), all=TRUE)
+
+sales_conditions<- sales_conditions %>% inner_join(county_dem, by = c("Store_County"="County_Name"))
+sales_conditions<- sales_conditions %>% inner_join(wichattrb, by = c("Store_num"="Store_Num"))
+sales_conditions<- sales_conditions %>% inner_join(county_employ, by = c("Store_County"="?..County_Name"))
+
+##### Cleaner nullverdiene i kriminalitetsdatasettet; 
+
+county_crime[is.na(county_crime)]="NA"
+sales_conditions<- sales_conditions %>% inner_join(county_crime, by = c("Store_County.x"="?..County_Name"))
+
+sales_conditions2<- sales_conditions %>% group_by(Store_num)
+
+summary= sales_conditions2 %>% select(INV_NUMBER:sales_month)%>%
+  filter(INV_NUMBER==37284) %>% group_by(Store_num, sales_month)
+
+
+#### OPPGAVE 2 
+##### Ved å bruke det sammenslåtte datasettet "salgsbetingelser", kan vi generere salgsanalyse for hvert produkt.
+##### siden det er 502 unike variabler, kan vi hente ut variablene for hvert av menyproduktene
+##### med koden nedenfor;
+
+
+item_frequency<-data.frame(table(weeksales$Description))
+
+quickserve_menu<- weeksales %>% select(INV_NUMBER:Price, -Store_num)
+
+quickserve_menu<-distinct(quickserve_menu)
+
+
+sales_freq<- quickserve_menu %>% inner_join(item_frequency, by=c("Description"="Var1"))
+
+weeksales%>%
+  ggplot(aes(x=Sales, y=Profit, color=Store_num))+
+  geom_line()
+
+
+#### OPPGAVE 3 
+
+
+summary= sales_conditions2 %>% select(INV_NUMBER:sales_month)%>%
+  filter(INV_NUMBER==14262) %>% group_by(Store_num, sales_month)
+
+summary %>%
+  ggplot(aes(x=sales_month, y=Sales, color=Store_num))+
+  geom_line()
+
+#####Dette plottet viser sammenhengen mellom salg, og hvordan utsalgene har sett ut for alle de ulike månedene. Dette er altså en rapport som viser salgene for hele perioden, fordelt månedlig. Vi kunne definert x aksen i plottet som en bestemt måned om det hadde vært ønskelig, men vi mener at man får et bedre helhetsinntrykk ved å få sett hele tidslinjen.
+
+  
+####Oppgave 4
+
+######Disse dataene kan definitivt benyttes til å planlegge nye utsalg. Hvis konsernsjefen vil etablere et nytt utsalg, så vil vi anbefale han og se på det mest proffitmaksimerende utsalget. Hva slags faktorer rundt det utsalget er med på å gi dette utfallet. Man må se på faktorer for demografi, hva slags kundebase er det man egentlig står ovenfor. Ut ifra geografisk plassering på det mest profittmaksimerende utfallet, så kan man lage en analyse hvor man ser på ønskede faktorer, til lokasjonen til det nye utsalget. 
+
+######Denne oppgaven har sett på statistiske faktorer som arbeidsledighet og kriminalitet. Dette er viktige faktorer man må ta stilling til når man skal starte ett nytt utsalg. De demografiske faktorene sier noe om betalingsvilligheten til de «eventuelle» kundene. Da kan man også lage seg en oppfatning om hva slags produkter man bør selge. Hvis man skal plassere utsalget innenfor en demografi hvor man faktisk kan få solgt et smørbrød. Andre viktige faktorer man bør se på er naturkrefter, vil folk spise mer ute hvis det er fint vær? Kan man få solgt suplementerende goder på slike dager? Kanskje en kunde vil kjøpe en is i tillegg til et smørbrød hvis det er fint vær. 
+
+
+#####Kilder: 
+
+######https://stackoverflow.com (Vi har hentet inspirasjon fra stackoverflow)
+######https://data.mendeley.com/datasets/6htjnfs78b/2
+
