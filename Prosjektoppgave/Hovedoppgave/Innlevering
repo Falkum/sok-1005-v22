@@ -106,8 +106,9 @@ quickserve_menu<-distinct(quickserve_menu)
 sales_freq<- quickserve_menu %>% inner_join(item_frequency, by=c("Description"="Var1"))
 
 weeksales%>%
-  ggplot(aes(x=Sales, y=Profit, color=Store_num))+
+  ggplot(aes(x=Sales, y=Profit, color="Store_num"))+
   geom_line()
+weeksales
 
 
 #### OPPGAVE 3 
